@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather!</title>
+    <style>
+
+        @font-face {
+            font-family: "VT323";
+            src: url("/static/VT323/VT323-Regular.ttf");
+        }
+
+        * {
+            font-family: "VT323", sans-serif;
+        }
+
+        /* Ensure canvas size matches sprite frame */
+
+        #weatherBox {
+            position: absolute;  /* Ensure it sits on top of the canvas */
+            top: 295px;
+            left: 180px;
+            width: 300px;
+            height: 300px;
+            background-color: rgba(224, 224, 224, 0);
+            text-align: center;
+            cursor: pointer;
+            z-index: 2;  /* Set z-index higher to be on top */
+            font-size: 24px;
+            font-weight: bold;
+            color: #5e446e;
+        }
+
+        #weatherDisplay {
+            color: #5e446e;
+        }
+
+        /* Style for the buttons */
+        /* Button container */
+        #buttonContainer {
+            position: absolute;
+            top: 20px;  /* Position buttons below the canvas */
+            left: 570px;
+            width: 80px;
+            text-align: center;
+            z-index: 3;
+        }
+
+        /* Common style for both buttons */
+        #celsiusButton, #fahrenheitButton {
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #ece1f2;
+            border-radius: 30px;
+            border-color: #5e446e;
+            display: inline-block;
+            opacity: 0.7;
+            box-shadow: 3px 3px 0px 0 #5e446e;
+            transition: all 0.3s ease;
+            color: #5e446e;
+        }
+
+        /* Active (clicked) button style */
+        #celsiusButton.clicked, #fahrenheitButton.clicked {
+            top: 3px;
+            left: 3px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #ece1f2;
+            border-radius: 30px;
+            border-color: #5e446e;
+            display: inline-block;
+            opacity: 0.7;
+            color: #5e446e;
+        }
+
+        /* Inactive (non-clicked) button style */
+        #celsiusButton:not(.clicked), #fahrenheitButton:not(.clicked) {
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #ece1f2;
+            border-radius: 30px;
+            border-color: #5e446e;
+            display: inline-block;
+            opacity: 0.7;
+            box-shadow: 3px 3px 0px 0 #5e446e;
+            transition: all 0.3s ease;
+        }
+
+        #picture {
+            position: absolute;
+            top: 60px;
+            left: 30px;
+            width: 600px;
+            height: 600px;
+            background-color: #f0f0f0;
+            z-index: 1;  /* Lower z-index to be underneath the weather box */
+            border: 5px solid #5e446e;
+            box-shadow: 0 0 0 10px #ece1f2;
+            opacity: 0.5;
+        }
+
+        a, form {
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            border-color: #5e446e;
+            display: inline-block;
+            opacity: 0.7;
+            box-shadow: 3px 3px 0px 0 #5e446e;
+            transition: all 0.3s ease;
+            color: #5e446e;
+            top: 12px;
+            left: 150px;
+            padding: 2px;
+            margin-right: 10px;
+            z-index: 10;  /* Ensure they are above other elements */
+            position: relative; /* Ensures the z-index is applied */
+        }
+
+        a:hover {
+            background-color: #e0e0e0;
+        }
+
+        #background-container {
+            position: absolute;
+            display: inline-flex; /* Flexbox for positioning table and bunny next to each other */
+            justify-content: flex-start;
+            align-items: flex-start;
+            height: 720px;
+            width: 650px;
+            background-color: #f0f0f0
+            border-style: solid;
+            border-width: 5px;
+            border-color: #5e446e;
+            border-radius: 15px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="background-container"></div>
+<div id="background-container">
+    <form method="POST" action="/weather/">
+        <input type="submit" value="Weather">
+    </form>
+    <form method="POST" action="/prem_fixtures/">
+        <input type="submit" value="Premier League">
+    </form>
+    <form method="POST" action="/mlb_fixtures/">
+        <input type="submit" value="MLB">
+    </form>
+    <form method="POST" action="/timer/">
+        <input type="submit" value="Timer">
+    </form>
+</div>
+
+<div id="buttonContainer">
+    <button id="celsiusButton">C</button>
+    <button id="fahrenheitButton">F</button>
+</div>
+
+<!-- Weather Display Box -->
+<div id="weatherBox" class="weather-box">
+    <div>
+        <div id="weatherDisplay"></div>
+    </div>
+</div>
+
+<!-- Canvas to display bunny sprite animation -->
+<div id="container">
+    <canvas id="picture"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/moment-timezone@0.5.34/builds/moment-timezone-with-data.min.js"></script>
+
+<script>
+
+    let time = 0;
+    let cities = ["Detroit", "Barcelona"];
+    let currentCity = cities[0]; // Default city (Detroit)
+    let currentUnits = 'imperial'; // Default unit (Fahrenheit)
+    let weather, night;
+
+    // Select buttons by their IDs and add event listeners
+    const celsiusButton = document.getElementById('celsiusButton');
+    const fahrenheitButton = document.getElementById('fahrenheitButton');
+
+    // Event listeners for the buttons
+    celsiusButton.addEventListener('click', function() {
+        toggleUnits('metric');
+        updateButtonState(celsiusButton);
+    });
+
+    fahrenheitButton.addEventListener('click', function() {
+        toggleUnits('imperial');
+        updateButtonState(fahrenheitButton);
+    });
+
+    function updateButtonState(activeButton) {
+        // Add the "active-button" class to the clicked button and remove it from the other
+        activeButton.classList.add('active-button');
+    }
+
+    // Function to toggle units
+    function toggleUnits(unit) {
+        if (unit !== currentUnits) {
+            currentUnits = unit;
+            getWeather(currentCity, currentUnits); // Fetch weather again with the new units
+        }
+    }
+
+    // Function to fetch and display weather
+    function getWeather(city, units) {
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=7ae1824ea57c6e8f034ac55d0c85d4d4&units=${units}`;
+
+        fetch(url)
+            .then(response => {
+                console.log(response);  // Log the response to inspect its status and content
+                if (!response.ok) {
+                    throw new Error(`City not found or invalid input: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data);  // Log the data to ensure we are receiving valid weather data
+
+                const temp = data.main.temp;
+                const weatherDescription = data.weather[0].description;
+                let hour;
+                let minute;
+                let pm = false;
+
+                // Handle hour conversion for Barcelona
+                if (city === "Barcelona") {
+                    const d = moment.tz("Europe/Madrid");  // Convert to Barcelona's timezone
+                    hour = d.hours();
+                    pm = hour >= 12;
+                    hour = hour > 12 ? hour - 12 : hour;  // Convert to 12-hour format
+                    minute = d.minutes();
+                } else {
+                    const d = new Date();
+                    hour = d.getHours();
+                    pm = hour >= 12;
+                    hour = hour > 12 ? hour - 12 : hour;  // Convert to 12-hour format
+                    minute = d.getMinutes();
+                }
+
+                minute = minute < 10 ? "0" + minute : minute; // Fix minutes formatting
+                hour = hour === 0 ? "12" : hour;
+
+                const unit = units === "imperial" ? "Fahrenheit" : "Celsius";
+                const output = `It is ${hour}:${minute} ${pm ? "P.M." : "A.M."} in ${city} and ${Math.round(temp)}° ${unit} with ${weatherDescription}.`;
+
+                // Update the weather div with the output
+                document.getElementById("weatherDisplay").innerHTML = output;
+
+                const currentTime = city === "Barcelona"
+                    ? moment.tz('Europe/Madrid').toDate()  // Using moment to handle the timezone properly
+                    : new Date();
+
+                console.log(currentTime);
+
+                const currentTimestamp = Math.floor(currentTime / 1000); // Convert to seconds
+                console.log(currentTimestamp)
+
+                // Get the sunrise and sunset times from the API response
+                const sunrise = data.sys.sunrise;
+                const sunset = data.sys.sunset;
+                console.log(sunrise)
+                console.log(sunset)
+
+                // Check if the current time is outside of the sunset and sunrise time
+                if (currentTimestamp > sunset || currentTimestamp < sunrise) {
+                    night = true;
+                    const weatherDisplay = document.getElementById('weatherDisplay');
+                    weatherDisplay.style.color = "#ece1f2";
+                } else {
+                    night = false;
+                    const weatherDisplay = document.getElementById('weatherDisplay');
+                    weatherDisplay.style.color = "#5e446e";
+                }
+
+                weather = data.weather[0].main; // Just assign it to the existing 'weather' variable
+
+                // Update the sprite sheet based on weather and time of day
+                updateSprite(weather, night);
+            })
+            .catch(error => {
+                console.error(error);  // Log the error to understand what's going wrong
+                document.getElementById("weatherBox").innerText = 'Failed to fetch weather data. Please try again.';
+            });
+    }
+
+    let animationFrameId; // Variable to hold the requestAnimationFrame ID
+
+    function updateSprite(weather, night) {
+        const spriteSheet = new Image();
+        let frameCount = 1;
+        let spriteSrc = '';
+
+        console.log(`Weather: ${weather}, Night: ${night}`);
+
+        // Determine the sprite source based on weather and time of day
+        if (night && weather === "Clear") {
+            spriteSrc = "/static/night-clear/night-clear.png";
+        } else if (!night && weather === "Clear") {
+            spriteSrc = "/static/day-clear/day-clear.png";
+        } else if (night && weather === "Clouds") {
+            spriteSrc = "/static/night-clouds/night-clouds.png";
+        } else if (!night && weather === "Clouds") {
+            spriteSrc = "/static/day-clouds/day-clouds.png";
+        } else if (night && weather === "Rain" || night && weather === "Drizzle") {
+            spriteSrc = "/static/night-rain/night-rain.png";
+            frameCount = 3;
+        } else if (!night && weather === "Rain" || !night && weather === "Drizzle") {
+            spriteSrc = "/static/day-rain/day-rain.png";
+            frameCount = 3;
+        } else if (night && weather === "Snow") {
+            spriteSrc = "/static/night-snow/night-snow.png";
+            frameCount = 7;
+        } else if (!night && weather === "Snow") {
+            spriteSrc = "/static/day-snow/day-snow.png";
+            frameCount = 3;
+        } else if (night && weather === "Thunderstorm") {
+            spriteSrc = "/static/night-thunderstorm/night-thunderstorm.png";
+            frameCount = 17;
+        } else if (!night && weather === "Thunderstorm") {
+            spriteSrc = "/static/day-thunderstorm/day-thunderstorm.png";
+            frameCount = 9;
+        } else if (night && weather === "Mist") {
+            spriteSrc = "/static/night-fog/night-fog.png";
+            frameCount = 1; // Single frame for fog
+        } else if (!night && weather === "Mist") {
+            spriteSrc = "/static/day-fog/day-fog.png";
+            frameCount = 1; // Single frame for fog
+        }
+
+        spriteSheet.src = spriteSrc;
+
+        // Ensure previous animations are stopped and cleared
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        spriteSheet.onload = function() {
+            const canvas = document.getElementById("picture");
+            const ctx = canvas.getContext("2d");
+
+            const spriteWidth = 2048;
+            const spriteHeight = 2048;
+            let currentFrame = 0;
+            const frameDelay = 200;
+            let lastFrameTime = 0;
+
+            canvas.width = 600;
+            canvas.height = 600;
+
+            // Clear the canvas before starting the new animation
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            function animateSprite(timestamp) {
+                const deltaTime = timestamp - lastFrameTime;
+
+                if (deltaTime > frameDelay) {
+                    const row = Math.floor(currentFrame / 2);
+                    const col = currentFrame % 2;
+                    const xOffset = col * spriteWidth;
+                    const yOffset = row * spriteHeight;
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before drawing the next frame
+                    ctx.drawImage(spriteSheet, xOffset, yOffset, spriteWidth, spriteHeight, 0, 0, 600, 600);
+
+                    currentFrame = (currentFrame + 1) % frameCount;
+                    lastFrameTime = timestamp;
+                }
+
+                animationFrameId = requestAnimationFrame(animateSprite); // Request the next frame
+            }
+
+            animationFrameId = requestAnimationFrame(animateSprite); // Start the animation loop
+        };
+
+        spriteSheet.onerror = function() {
+            console.error(`Failed to load sprite sheet: ${spriteSrc}`);
+        };
+    }
+
+    // Function to change city when the box is clicked
+    function changeCity() {
+        currentCity = currentCity === cities[0] ? cities[1] : cities[0];
+        const canvas = document.getElementById("picture");
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, 600, 600);
+        getWeather(currentCity, currentUnits); // Fetch weather data for the new city with current unit
+    }
+
+    // Add event listener to the weather box for changing the city
+    document.getElementById("weatherBox").addEventListener('click', changeCity);
+
+    // Call the function when the page is loaded
+    window.onload = function() {
+        getWeather(currentCity, currentUnits); // Fetch weather for the initial city (Detroit)
+    };
+</script>
+
+</body>
+</html>
