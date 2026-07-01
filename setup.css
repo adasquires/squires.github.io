@@ -1,0 +1,82 @@
+:root {
+    --taupe: rgb(112, 74, 74);
+    --jasmine: rgb(225, 191, 124);
+    --wheat: rgb(229, 206, 161);
+    --rose: rgb(219, 140, 161);
+    --coral: rgb(202, 161, 161);
+}
+
+@font-face {
+    font-family: "VT323";
+    src: url("./VT323/VT323-Regular.ttf");
+}
+
+* {
+    font-family: "VT323", sans-serif;
+}
+
+#weatherForm {
+    background-color: var(--wheat);
+    padding: 20px;
+    border-radius: 8px;
+    width: 300px;
+    margin: 0 auto;
+    font-family: "VT323", sans-serif;
+}
+
+#weatherForm label {
+    font-size: 16px;
+    color: var(--taupe);
+    display: block;
+    margin-bottom: 8px;
+}
+
+/* Style for the submit button */
+#weatherForm button {
+    background-color: var(--rose); /* Custom color */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+/* Button hover effect */
+#weatherForm button:hover {
+    background-color: var(--coral); /* Custom hover color */
+}
+
+/* Add responsiveness: make the form full-width on smaller screens */
+@media (max-width: 500px) {
+    #weatherForm {
+        width: 100%;
+    }
+}
+
+.radio-group {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+#image {
+    width: 100px; /* Width of one frame in the sprite sheet */
+    height: 100px; /* Height of one frame in the sprite sheet */
+    background: url('bunny.png'); /* Path to your sprite sheet */
+}
+
+table {
+    font-family: "VT323", sans-serif;
+}
+
+th, td {
+    font-family: "VT323", sans-serif;
+}
+
+#buttonContainer {
+    color: #e6d3f2;
+    border-radius: 15px;
+    display: inline-block;
+}
